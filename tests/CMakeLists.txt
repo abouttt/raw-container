@@ -9,6 +9,10 @@ FetchContent_Declare(
 set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
+set(TEST_SOURCES 
+    array_test.cpp
+)
+
 add_executable(raw_tests ${TEST_SOURCES})
 target_link_libraries(raw_tests PRIVATE raw gtest_main)
 target_include_directories(raw_tests PRIVATE ${CMAKE_SOURCE_DIR}/include)
