@@ -160,7 +160,7 @@ struct array
 
 	// ---------- Element Access ---------- //
 
-	[[nodiscard]] constexpr reference at(size_type pos)
+	[[nodiscard]] constexpr reference at(const size_type pos)
 	{
 		if (pos >= N)
 		{
@@ -170,7 +170,7 @@ struct array
 		return _elems[pos];
 	}
 
-	[[nodiscard]] constexpr const_reference at(size_type pos) const
+	[[nodiscard]] constexpr const_reference at(const size_type pos) const
 	{
 		if (pos >= N)
 		{
@@ -180,12 +180,12 @@ struct array
 		return _elems[pos];
 	}
 
-	[[nodiscard]] constexpr reference operator[](size_type pos)
+	[[nodiscard]] constexpr reference operator[](const size_type pos)
 	{
 		return _elems[pos];
 	}
 
-	[[nodiscard]] constexpr const_reference operator[](size_type pos) const
+	[[nodiscard]] constexpr const_reference operator[](const size_type pos) const
 	{
 		return _elems[pos];
 	}
@@ -334,22 +334,22 @@ struct array<T, 0>
 	using reverse_iterator = std::reverse_iterator<iterator>;
 	using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
-	[[noreturn]] reference at(size_type /*pos*/)
+	[[noreturn]] reference at(const size_type /*pos*/)
 	{
 		throw std::out_of_range("invalid array<T, 0> subscript");
 	}
 
-	[[noreturn]] const_reference at(size_type /*pos*/) const
+	[[noreturn]] const_reference at(const size_type /*pos*/) const
 	{
 		throw std::out_of_range("invalid array<T, 0> subscript");
 	}
 
-	[[nodiscard]] constexpr reference operator[](size_type /*pos*/)
+	[[nodiscard]] constexpr reference operator[](const size_type /*pos*/)
 	{
 		return *data();
 	}
 
-	[[nodiscard]] constexpr const_reference operator[](size_type /*pos*/) const
+	[[nodiscard]] constexpr const_reference operator[](const size_type /*pos*/) const
 	{
 		return *data();
 	}
