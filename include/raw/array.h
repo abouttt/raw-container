@@ -79,24 +79,24 @@ public:
 		return tmp;
 	}
 
-	constexpr array_iterator& operator+=(difference_type offset) noexcept
+	constexpr array_iterator& operator+=(const difference_type offset) noexcept
 	{
 		_ptr += offset;
 		return *this;
 	}
 
-	[[nodiscard]] constexpr array_iterator operator+(difference_type offset) const noexcept
+	[[nodiscard]] constexpr array_iterator operator+(const difference_type offset) const noexcept
 	{
 		return array_iterator(_ptr + offset);
 	}
 
-	constexpr array_iterator& operator-=(difference_type offset) noexcept
+	constexpr array_iterator& operator-=(const difference_type offset) noexcept
 	{
 		_ptr -= offset;
 		return *this;
 	}
 
-	[[nodiscard]] constexpr array_iterator operator-(difference_type offset) const noexcept
+	[[nodiscard]] constexpr array_iterator operator-(const difference_type offset) const noexcept
 	{
 		return array_iterator(_ptr - offset);
 	}
@@ -107,7 +107,7 @@ public:
 		return _ptr - other._ptr;
 	}
 
-	[[nodiscard]] constexpr reference operator[](difference_type offset) const noexcept
+	[[nodiscard]] constexpr reference operator[](const difference_type offset) const noexcept
 	{
 		return *(_ptr + offset);
 	}
@@ -124,7 +124,7 @@ public:
 		return _ptr <=> other._ptr;
 	}
 
-	[[nodiscard]] friend constexpr array_iterator operator+(difference_type offset, const array_iterator& it) noexcept
+	[[nodiscard]] friend constexpr array_iterator operator+(const difference_type offset, const array_iterator& it) noexcept
 	{
 		return array_iterator(it._ptr + offset);
 	}
