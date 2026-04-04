@@ -1,15 +1,16 @@
 #include <iostream>
 
 #include "raw/array.h"
+#include "raw/vector.h"
 
 int main()
 {
-	raw::array<int, 5> arr{ 1, 2, 3, 4, 5 };
+	raw::vector<int> v1{ 1, 2, 3, 4, 5 };
+	raw::vector<int> v2{ 1, 2, 3 };
 
-	for (int val : arr)
-	{
-		std::cout << val << ' ';
-	}
+	v1.assign(v2.begin(), v2.end());
+
+	std::cout << v1.capacity();
 
 	return 0;
 }
