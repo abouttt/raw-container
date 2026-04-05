@@ -509,18 +509,14 @@ public:
 
 	iterator insert(const_iterator pos, size_type count, const T& value)
 	{
-		const difference_type offset = pos - cbegin();
+		const difference_type offset = pos - begin();
 
 		if (count == 0)
 		{
 			return begin() + offset;
 		}
 
-		if (size() + count > capacity())
-		{
-			insert_reallocate(offset, count, value);
-		}
-		else
+		if (size() + count <= capacity())
 		{
 			if (is_within_storage(std::addressof(value)))
 			{
@@ -531,6 +527,10 @@ public:
 			{
 				insert_in_place(offset, count, value);
 			}
+		}
+		else
+		{
+			insert_reallocate(offset, count, value);
 		}
 
 		return begin() + offset;
@@ -543,18 +543,14 @@ public:
 
 		if constexpr (std::forward_iterator<InputIt>)
 		{
-			const size_type count = static_cast<size_type>(std::distance(first, last));
+			const size_type count = range_to_count(first, last);
 
 			if (count == 0)
 			{
 				return begin() + offset;
 			}
 
-			if (size() + count > capacity())
-			{
-				insert_range_reallocate(offset, first, last, count);
-			}
-			else
+			if (size() + count <= capacity())
 			{
 				if (is_within_storage_range(first, last))
 				{
@@ -565,6 +561,10 @@ public:
 				{
 					insert_range_in_place(offset, first, last, count);
 				}
+			}
+			else
+			{
+				insert_range_reallocate(offset, first, last, count);
 			}
 		}
 		else
@@ -586,13 +586,13 @@ public:
 	{
 		const difference_type offset = pos - begin();
 
-		if (_end == _end_of_storage)
+		if (_end != _end_of_storage)
 		{
-			emplace_reallocate(offset, std::forward<Args>(args)...);
+			emplace_in_place(offset, std::forward<Args>(args)...);
 		}
 		else
 		{
-			emplace_in_place(offset, std::forward<Args>(args)...);
+			emplace_reallocate(offset, std::forward<Args>(args)...);
 		}
 
 		return begin() + offset;
