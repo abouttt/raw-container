@@ -141,7 +141,7 @@ private:
 template <typename T, std::size_t N>
 struct array
 {
-	static_assert(std::is_object_v<T>, "array<T, N> element type must be an object");
+	static_assert(std::is_object_v<T>, "array element type must be an object");
 
 	// ---------- Types ---------- //
 
@@ -164,7 +164,7 @@ struct array
 	{
 		if (pos >= N)
 		{
-			throw std::out_of_range("invalid array<T, N> subscript");
+			throw std::out_of_range("invalid array subscript");
 		}
 
 		return _elems[pos];
@@ -174,7 +174,7 @@ struct array
 	{
 		if (pos >= N)
 		{
-			throw std::out_of_range("invalid array<T, N> subscript");
+			throw std::out_of_range("invalid array subscript");
 		}
 
 		return _elems[pos];
@@ -319,7 +319,7 @@ struct array
 template <typename T>
 struct array<T, 0>
 {
-	static_assert(std::is_object_v<T>, "array<T, 0> element type must be an object");
+	static_assert(std::is_object_v<T>, "array element type must be an object");
 
 	using value_type = T;
 	using size_type = std::size_t;
@@ -336,12 +336,12 @@ struct array<T, 0>
 
 	[[noreturn]] reference at(size_type /*pos*/)
 	{
-		throw std::out_of_range("invalid array<T, 0> subscript");
+		throw std::out_of_range("invalid array subscript");
 	}
 
 	[[noreturn]] const_reference at(size_type /*pos*/) const
 	{
-		throw std::out_of_range("invalid array<T, 0> subscript");
+		throw std::out_of_range("invalid array subscript");
 	}
 
 	[[nodiscard]] constexpr reference operator[](size_type /*pos*/)
