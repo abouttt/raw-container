@@ -640,28 +640,15 @@ public:
 	template <typename... Args>
 	reference emplace_back(Args&&... args)
 	{
-		if (size() < capacity())
+		const size_type old_size = size();
+
+		if (old_size < capacity())
 		{
-			std::construct_at(_end, std::forward<Args>(args)...);
-			++_end;
+			emplace_in_place(old_size, std::forward<Args>(args)...);
 		}
 		else
 		{
-			const size_type old_size = size();
-			const size_type new_cap = calculate_growth(old_size + 1);
-
-			pointer new_begin = allocate(new_cap);
-			detail::memory_guard mguard(new_begin, new_cap * sizeof(T));
-			detail::rollback_guard rguard(new_begin);
-
-			std::construct_at(new_begin + old_size, std::forward<Args>(args)...);
-			rguard.advance(1);
-
-			relocate_n(_begin, old_size, new_begin);
-
-			rguard.release();
-			mguard.release();
-			replace_storage(new_begin, old_size + 1, new_cap);
+			emplace_reallocate(old_size, std::forward<Args>(args)...);
 		}
 
 		return back();
