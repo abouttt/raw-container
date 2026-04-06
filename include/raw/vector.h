@@ -600,14 +600,7 @@ public:
 
 	iterator erase(const_iterator pos)
 	{
-		const difference_type offset = pos - begin();
-		pointer erase_pos = _begin + offset;
-
-		std::move(erase_pos + 1, _end, erase_pos);
-		--_end;
-		std::destroy_at(_end);
-
-		return begin() + offset;
+		return erase(pos, pos + 1);
 	}
 
 	iterator erase(const_iterator first, const_iterator last)
@@ -919,18 +912,20 @@ private:
 		const size_type new_cap = calculate_growth(old_size + 1);
 		pointer new_begin = allocate(new_cap);
 		detail::memory_guard mguard(new_begin, new_cap * sizeof(T));
+		detail::rollback_guard rguard(new_begin);
 
 		pointer new_insert_pos = new_begin + offset;
-		detail::rollback_guard rguard(new_insert_pos);
+		detail::rollback_guard elem_rguard(new_insert_pos);
 
 		std::construct_at(new_insert_pos, std::forward<Args>(args)...);
-		rguard.advance(1);
+		elem_rguard.advance(1);
 
 		relocate_n(_begin, offset, new_begin);
 		rguard.advance(offset);
 
 		relocate_n(_begin + offset, old_size - offset, new_insert_pos + 1);
 
+		elem_rguard.release();
 		rguard.release();
 		mguard.release();
 		replace_storage(new_begin, old_size + 1, new_cap);
