@@ -172,7 +172,7 @@ public:
 	vector() noexcept
 		: _begin(nullptr)
 		, _end(nullptr)
-		, _end_of_storage(nullptr)
+		, _end_cap(nullptr)
 	{
 	}
 
@@ -219,7 +219,7 @@ public:
 	vector(vector&& other) noexcept
 		: _begin(std::exchange(other._begin, nullptr))
 		, _end(std::exchange(other._end, nullptr))
-		, _end_of_storage(std::exchange(other._end_of_storage, nullptr))
+		, _end_cap(std::exchange(other._end_cap, nullptr))
 	{
 	}
 
@@ -248,7 +248,7 @@ public:
 
 			_begin = std::exchange(other._begin, nullptr);
 			_end = std::exchange(other._end, nullptr);
-			_end_of_storage = std::exchange(other._end_of_storage, nullptr);
+			_end_cap = std::exchange(other._end_cap, nullptr);
 		}
 
 		return *this;
@@ -465,7 +465,7 @@ public:
 
 	[[nodiscard]] constexpr size_type capacity() const noexcept
 	{
-		return static_cast<size_type>(_end_of_storage - _begin);
+		return static_cast<size_type>(_end_cap - _begin);
 	}
 
 	void reserve(size_type new_cap)
@@ -586,7 +586,7 @@ public:
 	{
 		const difference_type offset = pos - begin();
 
-		if (_end != _end_of_storage)
+		if (_end != _end_cap)
 		{
 			emplace_in_place(offset, std::forward<Args>(args)...);
 		}
@@ -671,7 +671,7 @@ public:
 			using std::swap;
 			swap(_begin, other._begin);
 			swap(_end, other._end);
-			swap(_end_of_storage, other._end_of_storage);
+			swap(_end_cap, other._end_cap);
 		}
 	}
 
@@ -688,7 +688,7 @@ private:
 
 	[[nodiscard]] bool is_within_storage(const_pointer ptr) const noexcept
 	{
-		return ptr >= _begin && ptr < _end_of_storage;
+		return ptr >= _begin && ptr < _end_cap;
 	}
 
 	template <std::contiguous_iterator ContiguousIt>
@@ -702,7 +702,7 @@ private:
 		const_pointer first_ptr = std::to_address(first);
 		const_pointer last_ptr = std::to_address(last);
 
-		return first_ptr >= _begin && first_ptr < _end_of_storage && last_ptr > _begin && last_ptr <= _end_of_storage;
+		return first_ptr >= _begin && first_ptr < _end_cap && last_ptr > _begin && last_ptr <= _end_cap;
 	}
 
 	template <std::forward_iterator ForwardIt>
@@ -1018,7 +1018,7 @@ private:
 
 		_begin = new_begin;
 		_end = new_begin + count;
-		_end_of_storage = new_begin + count;
+		_end_cap = new_begin + count;
 	}
 
 	void relocate_n(pointer first, size_type count, pointer dest)
@@ -1061,7 +1061,7 @@ private:
 
 		_begin = new_begin;
 		_end = new_begin + new_size;
-		_end_of_storage = new_begin + new_cap;
+		_end_cap = new_begin + new_cap;
 	}
 
 	void tidy()
@@ -1071,7 +1071,7 @@ private:
 
 	pointer _begin;
 	pointer _end;
-	pointer _end_of_storage;
+	pointer _end_cap;
 };
 
 // ---------- Non-member functions ---------- //
