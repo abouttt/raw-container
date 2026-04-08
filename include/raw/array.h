@@ -344,32 +344,32 @@ struct array<T, 0>
 		throw std::out_of_range("invalid array subscript");
 	}
 
-	[[nodiscard]] constexpr reference operator[](size_type /*pos*/)
+	[[nodiscard]] reference operator[](size_type /*pos*/)
 	{
 		return *data();
 	}
 
-	[[nodiscard]] constexpr const_reference operator[](size_type /*pos*/) const
+	[[nodiscard]] const_reference operator[](size_type /*pos*/) const
 	{
 		return *data();
 	}
 
-	[[nodiscard]] constexpr reference front()
+	[[nodiscard]] reference front()
 	{
 		return *data();
 	}
 
-	[[nodiscard]] constexpr const_reference front() const
+	[[nodiscard]] const_reference front() const
 	{
 		return *data();
 	}
 
-	[[nodiscard]] constexpr reference back()
+	[[nodiscard]] reference back()
 	{
 		return *data();
 	}
 
-	[[nodiscard]] constexpr const_reference back() const
+	[[nodiscard]] const_reference back() const
 	{
 		return *data();
 	}
