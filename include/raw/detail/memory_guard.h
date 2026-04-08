@@ -10,12 +10,13 @@ template <typename T>
 class memory_guard
 {
 public:
+	using value_type = T;
 	using size_type = std::size_t;
 	using pointer = T*;
 
-	memory_guard(pointer ptr, size_type bytes) noexcept
+	memory_guard(pointer ptr, size_type count) noexcept
 		: _ptr(ptr)
-		, _bytes(bytes)
+		, _count(count)
 	{
 	}
 
@@ -23,7 +24,7 @@ public:
 	{
 		if (_ptr)
 		{
-			::operator delete(_ptr, _bytes, std::align_val_t{ alignof(T) });
+			::operator delete(_ptr, _count * sizeof(T), std::align_val_t{ alignof(T) });
 		}
 	}
 
@@ -37,20 +38,20 @@ public:
 		return _ptr;
 	}
 
-	[[nodiscard]] size_type bytes() const noexcept
+	[[nodiscard]] size_type count() const noexcept
 	{
-		return _bytes;
+		return _count;
 	}
 
 	void release() noexcept
 	{
 		_ptr = nullptr;
-		_bytes = 0;
+		_count = 0;
 	}
 
 private:
 	pointer _ptr;
-	size_type _bytes;
+	size_type _count;
 };
 
 } // namespace raw::detail

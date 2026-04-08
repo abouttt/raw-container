@@ -10,6 +10,7 @@ template <typename T>
 class rollback_guard
 {
 public:
+	using value_type = T;
 	using size_type = std::size_t;
 	using pointer = T*;
 
