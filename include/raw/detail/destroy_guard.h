@@ -1,33 +1,33 @@
 #pragma once
 
 #include <cstddef>
-#include <new>
+#include <memory>
 
 namespace raw::detail
 {
 
 template <typename T>
-class memory_guard
+class destroy_guard
 {
 public:
 	using value_type = T;
 	using size_type = std::size_t;
 	using pointer = T*;
 
-	explicit memory_guard(pointer ptr, size_type count) noexcept
+	explicit destroy_guard(pointer ptr, size_type count) noexcept
 		: _ptr(ptr)
 		, _count(count)
 	{
 	}
 
-	memory_guard(const memory_guard& other) = delete;
-	memory_guard& operator=(const memory_guard& other) = delete;
+	destroy_guard(const destroy_guard&) = delete;
+	destroy_guard& operator=(const destroy_guard&) = delete;
 
-	~memory_guard()
+	~destroy_guard()
 	{
 		if (_ptr)
 		{
-			::operator delete(_ptr, _count * sizeof(T), std::align_val_t{ alignof(T) });
+			std::destroy_n(_ptr, _count);
 		}
 	}
 
