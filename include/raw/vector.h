@@ -1,21 +1,20 @@
 #pragma once
 
 #include <algorithm>
-#include <cassert>
 #include <compare>
 #include <concepts>
 #include <cstddef>
 #include <initializer_list>
+#include <iterator>
 #include <limits>
 #include <memory>
 #include <new>
-#include <iterator>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
 
+#include "detail/destroy_guard.h"
 #include "detail/memory_guard.h"
-#include "detail/rollback_guard.h"
 
 namespace raw
 {
@@ -228,7 +227,7 @@ public:
 		tidy();
 	}
 
-	// ---------- Assignment operators ---------- //
+	// ---------- Assignment ---------- //
 
 	vector& operator=(const vector& other)
 	{
@@ -260,25 +259,36 @@ public:
 		return *this;
 	}
 
-	// ---------- Assign ---------- //
-
 	void assign(size_type count, const T& value)
 	{
 		if (count <= capacity())
 		{
-			if (is_within_storage(std::addressof(value)))
+			const size_type old_size = size();
+
+			if (count > old_size)
 			{
-				const T tmp = value;
-				assign_in_place(count, tmp);
+				std::fill_n(_begin, old_size, value);
+				std::uninitialized_fill_n(_end, count - old_size, value);
 			}
 			else
 			{
-				assign_in_place(count, value);
+				std::fill_n(_begin, count, value);
+				std::destroy_n(_begin + count, old_size - count);
 			}
+
+			_end = _begin + count;
 		}
 		else
 		{
-			assign_reallocate(count, value);
+			const size_type new_cap = calculate_growth(count);
+			pointer new_begin = allocate(new_cap);
+
+			detail::memory_guard<T> mguard(new_begin, new_cap);
+
+			std::uninitialized_fill_n(new_begin, count, value);
+
+			mguard.release();
+			replace_storage(new_begin, count, new_cap);
 		}
 	}
 
@@ -291,25 +301,38 @@ public:
 
 			if (count <= capacity())
 			{
-				if (is_within_storage_range(first, last))
+				const size_type old_size = size();
+
+				if (count > old_size)
 				{
-					const vector tmp(first, last);
-					assign_in_place_range(tmp.begin(), tmp.end(), count);
+					InputIt mid = std::next(first, old_size);
+					std::copy(first, mid, _begin);
+					std::uninitialized_copy(mid, last, _end);
 				}
 				else
 				{
-					assign_in_place_range(first, last, count);
+					std::copy(first, last, _begin);
+					std::destroy(_begin + count, _end);
 				}
+
+				_end = _begin + count;
 			}
 			else
 			{
-				assign_range_reallocate(first, last, count);
+				const size_type new_cap = calculate_growth(count);
+				pointer new_begin = allocate(new_cap);
+
+				detail::memory_guard<T> mguard(new_begin, new_cap);
+
+				std::uninitialized_copy(first, last, new_begin);
+
+				mguard.release();
+				replace_storage(new_begin, count, new_cap);
 			}
 		}
 		else
 		{
-			vector tmp(first, last);
-			swap(tmp);
+			vector(first, last).swap(*this);
 		}
 	}
 
@@ -324,7 +347,7 @@ public:
 	{
 		if (pos >= size())
 		{
-			throw_out_of_range();
+			xrange();
 		}
 
 		return _begin[pos];
@@ -334,7 +357,7 @@ public:
 	{
 		if (pos >= size())
 		{
-			throw_out_of_range();
+			xrange();
 		}
 
 		return _begin[pos];
@@ -352,25 +375,21 @@ public:
 
 	[[nodiscard]] constexpr reference front()
 	{
-		assert(_begin != _end && "front() called on empty vector");
 		return *_begin;
 	}
 
 	[[nodiscard]] constexpr const_reference front() const
 	{
-		assert(_begin != _end && "front() called on empty vector");
 		return *_begin;
 	}
 
 	[[nodiscard]] constexpr reference back()
 	{
-		assert(_begin != _end && "back() called on empty vector");
 		return *(_end - 1);
 	}
 
 	[[nodiscard]] constexpr const_reference back() const
 	{
-		assert(_begin != _end && "back() called on empty vector");
 		return *(_end - 1);
 	}
 
@@ -460,7 +479,7 @@ public:
 
 	[[nodiscard]] constexpr size_type max_size() const noexcept
 	{
-		return std::numeric_limits<difference_type>::max();
+		return std::numeric_limits<difference_type>::max() / sizeof(T);
 	}
 
 	[[nodiscard]] constexpr size_type capacity() const noexcept
@@ -474,7 +493,7 @@ public:
 		{
 			if (new_cap > max_size())
 			{
-				throw_length_error();
+				xlength();
 			}
 
 			reallocate(new_cap);
@@ -483,9 +502,17 @@ public:
 
 	void shrink_to_fit()
 	{
-		if (size() < capacity())
+		if (_end != _end_cap)
 		{
-			reallocate(size());
+			if (_begin != _end)
+			{
+				const size_type new_cap = static_cast<size_type>(_end - _begin);
+				reallocate(new_cap);
+			}
+			else
+			{
+				tidy();
+			}
 		}
 	}
 
@@ -516,21 +543,60 @@ public:
 			return begin() + offset;
 		}
 
-		if (size() + count <= capacity())
+		const size_type old_size = size();
+
+		if (old_size + count <= capacity())
 		{
-			if (is_within_storage(std::addressof(value)))
+			T value_copy = value;
+			pointer insert_pos = _begin + offset;
+			const size_type elems_after = old_size - offset;
+
+			detail::destroy_guard<T> dguard(_end);
+
+			if (count > elems_after)
 			{
-				const T tmp = value;
-				insert_in_place(offset, count, tmp);
+				std::uninitialized_fill_n(_end, count - elems_after, value_copy);
+				dguard.advance(count - elems_after);
+
+				std::uninitialized_move_n(insert_pos, elems_after, insert_pos + count);
+				dguard.advance(elems_after);
+
+				std::fill_n(insert_pos, elems_after, value_copy);
 			}
 			else
 			{
-				insert_in_place(offset, count, value);
+				std::uninitialized_move_n(_end - count, count, _end);
+				dguard.advance(count);
+
+				std::move_backward(insert_pos, _end - count, _end);
+				std::fill_n(insert_pos, count, value_copy);
 			}
+
+			dguard.release();
+			_end += count;
 		}
 		else
 		{
-			insert_reallocate(offset, count, value);
+			const size_type new_cap = calculate_growth(old_size + count);
+			pointer new_begin = allocate(new_cap);
+			pointer insert_pos = new_begin + offset;
+
+			detail::memory_guard<T> mguard(new_begin, new_cap);
+			detail::destroy_guard<T> dguard(new_begin);
+			detail::destroy_guard<T> fill_dguard(insert_pos);
+
+			std::uninitialized_fill_n(insert_pos, count, value);
+			fill_dguard.advance(count);
+
+			relocate_n(_begin, offset, new_begin);
+			dguard.advance(offset);
+
+			relocate_n(_begin + offset, old_size - offset, insert_pos + count);
+
+			fill_dguard.release();
+			dguard.release();
+			mguard.release();
+			replace_storage(new_begin, old_size + count, new_cap);
 		}
 
 		return begin() + offset;
@@ -539,10 +605,9 @@ public:
 	template <std::input_iterator InputIt>
 	iterator insert(const_iterator pos, InputIt first, InputIt last)
 	{
-		const difference_type offset = pos - begin();
-
 		if constexpr (std::forward_iterator<InputIt>)
 		{
+			const difference_type offset = pos - begin();
 			const size_type count = range_to_count(first, last);
 
 			if (count == 0)
@@ -550,30 +615,70 @@ public:
 				return begin() + offset;
 			}
 
-			if (size() + count <= capacity())
+			const size_type old_size = size();
+
+			if (old_size + count <= capacity())
 			{
-				if (is_within_storage_range(first, last))
+				pointer insert_pos = _begin + offset;
+				const size_type elems_after = old_size - offset;
+
+				detail::destroy_guard<T> dguard(_end);
+
+				if (count > elems_after)
 				{
-					const vector tmp(first, last);
-					insert_range_in_place(offset, tmp.begin(), tmp.end(), count);
+					InputIt mid = std::next(first, elems_after);
+
+					std::uninitialized_copy(mid, last, _end);
+					dguard.advance(count - elems_after);
+
+					std::uninitialized_move(insert_pos, _end, _end + count - elems_after);
+					dguard.advance(elems_after);
+
+					std::copy(first, mid, insert_pos);
 				}
 				else
 				{
-					insert_range_in_place(offset, first, last, count);
+					std::uninitialized_move(_end - count, _end, _end);
+					dguard.advance(count);
+
+					std::move_backward(insert_pos, _end - count, _end);
+					std::copy(first, last, insert_pos);
 				}
+
+				dguard.release();
+				_end += count;
 			}
 			else
 			{
-				insert_range_reallocate(offset, first, last, count);
+				const size_type new_cap = calculate_growth(old_size + count);
+				pointer new_begin = allocate(new_cap);
+				pointer insert_pos = new_begin + offset;
+
+				detail::memory_guard<T> mguard(new_begin, new_cap);
+				detail::destroy_guard<T> dguard(new_begin);
+				detail::destroy_guard<T> copy_dguard(insert_pos);
+
+				std::uninitialized_copy(first, last, insert_pos);
+				copy_dguard.advance(count);
+
+				relocate_n(_begin, offset, new_begin);
+				dguard.advance(offset);
+
+				relocate_n(_begin + offset, old_size - offset, insert_pos + count);
+
+				copy_dguard.release();
+				dguard.release();
+				mguard.release();
+				replace_storage(new_begin, old_size + count, new_cap);
 			}
+
+			return begin() + offset;
 		}
 		else
 		{
 			vector tmp(first, last);
-			insert(pos, tmp.begin(), tmp.end());
+			return insert(pos, tmp.begin(), tmp.end());
 		}
-
-		return begin() + offset;
 	}
 
 	iterator insert(const_iterator pos, std::initializer_list<T> ilist)
@@ -588,11 +693,45 @@ public:
 
 		if (_end != _end_cap)
 		{
-			emplace_in_place(offset, std::forward<Args>(args)...);
+			pointer insert_pos = _begin + offset;
+
+			if (insert_pos == _end)
+			{
+				std::construct_at(_end, std::forward<Args>(args)...);
+				++_end;
+			}
+			else
+			{
+				T tmp(std::forward<Args>(args)...);
+				std::construct_at(_end, std::move(*(_end - 1)));
+				++_end;
+				std::move_backward(insert_pos, _end - 2, _end - 1);
+				*insert_pos = std::move(tmp);
+			}
 		}
 		else
 		{
-			emplace_reallocate(offset, std::forward<Args>(args)...);
+			const size_type old_size = size();
+			const size_type new_cap = calculate_growth(old_size + 1);
+			pointer new_begin = allocate(new_cap);
+			pointer insert_pos = new_begin + offset;
+
+			detail::memory_guard<T> mguard(new_begin, new_cap);
+			detail::destroy_guard<T> dguard(new_begin);
+			detail::destroy_guard<T> elem_dguard(insert_pos);
+
+			std::construct_at(insert_pos, std::forward<Args>(args)...);
+			elem_dguard.advance(1);
+
+			relocate_n(_begin, offset, new_begin);
+			dguard.advance(offset);
+
+			relocate_n(_begin + offset, old_size - offset, insert_pos + 1);
+
+			elem_dguard.release();
+			dguard.release();
+			mguard.release();
+			replace_storage(new_begin, old_size + 1, new_cap);
 		}
 
 		return begin() + offset;
@@ -605,19 +744,19 @@ public:
 
 	iterator erase(const_iterator first, const_iterator last)
 	{
-		if (first == last)
+		const difference_type offset_first = first - cbegin();
+		const difference_type offset_last = last - cbegin();
+		pointer erase_first = _begin + offset_first;
+		pointer erase_last = _begin + offset_last;
+
+		if (erase_first != erase_last)
 		{
-			return begin() + (first - begin());
+			pointer new_end = std::move(erase_last, _end, erase_first);
+			std::destroy(new_end, _end);
+			_end = new_end;
 		}
 
-		pointer erase_first = _begin + (first - begin());
-		pointer erase_last = _begin + (last - begin());
-
-		pointer new_end = std::move(erase_last, _end, erase_first);
-		std::destroy(new_end, _end);
-		_end = new_end;
-
-		return begin() + (first - begin());
+		return iterator(erase_first);
 	}
 
 	void push_back(const T& value)
@@ -633,15 +772,29 @@ public:
 	template <typename... Args>
 	reference emplace_back(Args&&... args)
 	{
-		const size_type old_size = size();
-
-		if (old_size < capacity())
+		if (_end != _end_cap)
 		{
-			emplace_in_place(old_size, std::forward<Args>(args)...);
+			std::construct_at(_end, std::forward<Args>(args)...);
+			++_end;
 		}
 		else
 		{
-			emplace_reallocate(old_size, std::forward<Args>(args)...);
+			const size_type old_size = size();
+			const size_type new_cap = calculate_growth(old_size + 1);
+			pointer new_begin = allocate(new_cap);
+			pointer insert_pos = new_begin + old_size;
+
+			detail::memory_guard<T> mguard(new_begin, new_cap);
+			detail::destroy_guard<T> dguard(insert_pos);
+
+			std::construct_at(insert_pos, std::forward<Args>(args)...);
+			dguard.advance(1);
+
+			relocate_n(_begin, old_size, new_begin);
+
+			dguard.release();
+			mguard.release();
+			replace_storage(new_begin, old_size + 1, new_cap);
 		}
 
 		return back();
@@ -649,19 +802,84 @@ public:
 
 	void pop_back()
 	{
-		assert(_begin != _end && "pop_back() called on empty vector");
 		--_end;
 		std::destroy_at(_end);
 	}
 
 	void resize(size_type count)
 	{
-		resize_in_place(count, T{});
+		const size_type old_size = size();
+
+		if (count < old_size)
+		{
+			std::destroy_n(_begin + count, old_size - count);
+		}
+		else if (count > old_size)
+		{
+			if (count <= capacity())
+			{
+				std::uninitialized_value_construct_n(_end, count - old_size);
+			}
+			else
+			{
+				if (count > max_size())
+				{
+					xlength();
+				}
+
+				const size_type new_cap = calculate_growth(count);
+				reallocate(new_cap);
+				std::uninitialized_value_construct_n(_end, count - old_size);
+			}
+		}
+
+		_end = _begin + count;
 	}
 
 	void resize(size_type count, const T& value)
 	{
-		resize_in_place(count, value);
+		const size_type old_size = size();
+
+		if (count < old_size)
+		{
+			std::destroy_n(_begin + count, old_size - count);
+		}
+		else if (count > old_size)
+		{
+			if (count <= capacity())
+			{
+				std::uninitialized_fill_n(_end, count - old_size, value);
+			}
+			else
+			{
+				if (count > max_size())
+				{
+					xlength();
+				}
+
+				const size_type new_cap = calculate_growth(count);
+				pointer new_begin = allocate(new_cap);
+
+				detail::memory_guard<T> mguard(new_begin, new_cap);
+				detail::destroy_guard<T> dguard(new_begin);
+				detail::destroy_guard<T> fill_dguard(new_begin + old_size);
+
+				std::uninitialized_fill_n(new_begin + old_size, count - old_size, value);
+				fill_dguard.advance(count - old_size);
+
+				relocate_n(_begin, old_size, new_begin);
+				dguard.advance(old_size);
+
+				fill_dguard.release();
+				dguard.release();
+				mguard.release();
+				replace_storage(new_begin, count, new_cap);
+
+				return;
+			}
+		}
+
+		_end = _begin + count;
 	}
 
 	void swap(vector& other) noexcept
@@ -676,33 +894,14 @@ public:
 	}
 
 private:
-	[[noreturn]] static void throw_length_error()
+	[[noreturn]] static void xlength()
 	{
 		throw std::length_error("vector too long");
 	}
 
-	[[noreturn]] static void throw_out_of_range()
+	[[noreturn]] static void xrange()
 	{
 		throw std::out_of_range("invalid vector subscript");
-	}
-
-	[[nodiscard]] bool is_within_storage(const_pointer ptr) const noexcept
-	{
-		return ptr >= _begin && ptr < _end_cap;
-	}
-
-	template <std::contiguous_iterator ContiguousIt>
-	[[nodiscard]] bool is_within_storage_range(ContiguousIt first, ContiguousIt last) const noexcept
-	{
-		if (first == last)
-		{
-			return false;
-		}
-
-		const_pointer first_ptr = std::to_address(first);
-		const_pointer last_ptr = std::to_address(last);
-
-		return first_ptr >= _begin && first_ptr < _end_cap && last_ptr > _begin && last_ptr <= _end_cap;
 	}
 
 	template <std::forward_iterator ForwardIt>
@@ -712,7 +911,7 @@ private:
 
 		if (length > max_size())
 		{
-			throw_length_error();
+			xlength();
 		}
 
 		return length;
@@ -733,254 +932,14 @@ private:
 		return geometric < new_size ? new_size : geometric;
 	}
 
-	void assign_in_place(size_type count, const T& value)
-	{
-		const size_type old_size = size();
-
-		if (count > old_size)
-		{
-			std::fill_n(_begin, old_size, value);
-			std::uninitialized_fill_n(_end, count - old_size, value);
-		}
-		else
-		{
-			std::fill_n(_begin, count, value);
-			std::destroy_n(_begin + count, old_size - count);
-		}
-
-		_end = _begin + count;
-	}
-
-	template <std::forward_iterator ForwardIt>
-	void assign_in_place_range(ForwardIt first, ForwardIt last, size_type count)
-	{
-		const size_type old_size = size();
-
-		if (count > old_size)
-		{
-			ForwardIt mid = std::next(first, old_size);
-			std::copy(first, mid, _begin);
-			std::uninitialized_copy(mid, last, _end);
-		}
-		else
-		{
-			pointer new_end = std::copy(first, last, _begin);
-			std::destroy(new_end, _end);
-		}
-
-		_end = _begin + count;
-	}
-
-	void assign_reallocate(size_type count, const T& value)
-	{
-		pointer new_begin = allocate(count);
-		detail::memory_guard mguard(new_begin, count * sizeof(T));
-
-		std::uninitialized_fill_n(new_begin, count, value);
-
-		mguard.release();
-		replace_storage(new_begin, count, count);
-	}
-
-	template <std::forward_iterator ForwardIt>
-	void assign_range_reallocate(ForwardIt first, ForwardIt last, size_type count)
-	{
-		pointer new_begin = allocate(count);
-		detail::memory_guard mguard(new_begin, count * sizeof(T));
-
-		std::uninitialized_copy(first, last, new_begin);
-
-		mguard.release();
-		replace_storage(new_begin, count, count);
-	}
-
-	void insert_in_place(difference_type offset, size_type count, const T& value)
-	{
-		pointer insert_pos = _begin + offset;
-		const size_type elems_after = _end - insert_pos;
-
-		if (count > elems_after)
-		{
-			std::uninitialized_fill_n(_end, count - elems_after, value);
-			std::uninitialized_move_n(insert_pos, elems_after, _end + count - elems_after);
-			std::fill_n(insert_pos, elems_after, value);
-		}
-		else
-		{
-			std::uninitialized_move_n(_end - count, count, _end);
-			std::move_backward(insert_pos, _end - count, _end);
-			std::fill_n(insert_pos, count, value);
-		}
-
-		_end += count;
-	}
-
-	void insert_reallocate(difference_type offset, size_type count, const T& value)
-	{
-		const size_type old_size = size();
-		const size_type new_cap = calculate_growth(old_size + count);
-		pointer new_begin = allocate(new_cap);
-		detail::memory_guard mguard(new_begin, new_cap * sizeof(T));
-		detail::rollback_guard rguard(new_begin);
-
-		pointer insert_pos = new_begin + offset;
-
-		relocate_n(_begin, offset, new_begin);
-		rguard.advance(offset);
-
-		std::uninitialized_fill_n(insert_pos, count, value);
-		rguard.advance(count);
-
-		relocate_n(_begin + offset, old_size - offset, insert_pos + count);
-
-		rguard.release();
-		mguard.release();
-		replace_storage(new_begin, old_size + count, new_cap);
-	}
-
-	template <std::forward_iterator ForwardIt>
-	void insert_range_in_place(difference_type offset, ForwardIt first, ForwardIt last, size_type count)
-	{
-		pointer insert_pos = _begin + offset;
-		const size_type elems_after = _end - insert_pos;
-
-		if (count > elems_after)
-		{
-			ForwardIt mid = std::next(first, elems_after);
-			std::uninitialized_copy(mid, last, _end);
-			std::uninitialized_move_n(insert_pos, elems_after, _end + count - elems_after);
-			std::copy(first, mid, insert_pos);
-		}
-		else
-		{
-			std::uninitialized_move_n(_end - count, count, _end);
-			std::move_backward(insert_pos, _end - count, _end);
-			std::copy(first, last, insert_pos);
-		}
-
-		_end += count;
-	}
-
-	template <std::forward_iterator ForwardIt>
-	void insert_range_reallocate(difference_type offset, ForwardIt first, ForwardIt last, size_type count)
-	{
-		const size_type old_size = size();
-		const size_type new_cap = calculate_growth(old_size + count);
-		pointer new_begin = allocate(new_cap);
-		detail::memory_guard mguard(new_begin, new_cap * sizeof(T));
-		detail::rollback_guard rguard(new_begin);
-
-		pointer insert_pos = new_begin + offset;
-
-		relocate_n(_begin, offset, new_begin);
-		rguard.advance(offset);
-
-		std::uninitialized_copy(first, last, insert_pos);
-		rguard.advance(count);
-
-		relocate_n(_begin + offset, old_size - offset, insert_pos + count);
-
-		rguard.release();
-		mguard.release();
-		replace_storage(new_begin, old_size + count, new_cap);
-	}
-
-	template <typename... Args>
-	void emplace_in_place(difference_type offset, Args&&... args)
-	{
-		pointer insert_pos = _begin + offset;
-
-		if (insert_pos == _end)
-		{
-			std::construct_at(_end, std::forward<Args>(args)...);
-			++_end;
-		}
-		else
-		{
-			T tmp(std::forward<Args>(args)...);
-			std::construct_at(_end, std::move(*(_end - 1)));
-			++_end;
-			std::move_backward(insert_pos, _end - 2, _end - 1);
-			*insert_pos = std::move(tmp);
-		}
-	}
-
-	template <typename... Args>
-	void emplace_reallocate(difference_type offset, Args&&... args)
-	{
-		const size_type old_size = size();
-		const size_type new_cap = calculate_growth(old_size + 1);
-		pointer new_begin = allocate(new_cap);
-		detail::memory_guard mguard(new_begin, new_cap * sizeof(T));
-		detail::rollback_guard rguard(new_begin);
-
-		pointer new_insert_pos = new_begin + offset;
-		detail::rollback_guard elem_rguard(new_insert_pos);
-
-		std::construct_at(new_insert_pos, std::forward<Args>(args)...);
-		elem_rguard.advance(1);
-
-		relocate_n(_begin, offset, new_begin);
-		rguard.advance(offset);
-
-		relocate_n(_begin + offset, old_size - offset, new_insert_pos + 1);
-
-		elem_rguard.release();
-		rguard.release();
-		mguard.release();
-		replace_storage(new_begin, old_size + 1, new_cap);
-	}
-
-	void resize_in_place(size_type new_size, const T& value)
-	{
-		if (new_size > max_size())
-		{
-			throw_length_error();
-		}
-
-		const size_type old_size = size();
-
-		if (new_size < old_size)
-		{
-			std::destroy_n(_begin + new_size, old_size - new_size);
-		}
-		else if (new_size > old_size)
-		{
-			if (new_size > capacity())
-			{
-				resize_reallocate(new_size, value);
-				return;
-			}
-			else
-			{
-				std::uninitialized_fill_n(_end, new_size - old_size, value);
-			}
-		}
-
-		_end = _begin + new_size;
-	}
-
-	void resize_reallocate(size_type new_size, const T& value)
-	{
-		pointer new_begin = allocate(new_size);
-		detail::memory_guard mguard(new_begin, new_size * sizeof(T));
-		detail::rollback_guard rguard(new_begin);
-
-		const size_type old_size = size();
-
-		relocate_n(_begin, old_size, new_begin);
-		rguard.advance(old_size);
-
-		std::uninitialized_fill_n(new_begin + old_size, new_size - old_size, value);
-
-		rguard.release();
-		mguard.release();
-		replace_storage(new_begin, new_size, new_size);
-	}
-
 	[[nodiscard]] pointer allocate(size_type count)
 	{
-		return count > 0 ? static_cast<pointer>(::operator new(count * sizeof(T), std::align_val_t{ alignof(T) })) : nullptr;
+		if (count == 0)
+		{
+			return nullptr;
+		}
+
+		return static_cast<pointer>(::operator new(count * sizeof(T), std::align_val_t{ alignof(T) }));
 	}
 
 	void deallocate(pointer ptr, size_type count)
@@ -994,8 +953,13 @@ private:
 	template <typename... Args>
 	void construct_n(size_type count, Args&&... args)
 	{
+		if (count == 0)
+		{
+			return;
+		}
+
 		pointer new_begin = allocate(count);
-		detail::memory_guard mguard(new_begin, count * sizeof(T));
+		detail::memory_guard<T> mguard(new_begin, count);
 
 		if constexpr (sizeof...(args) == 0)
 		{
@@ -1003,7 +967,7 @@ private:
 		}
 		else if constexpr (sizeof...(args) == 1)
 		{
-			std::uninitialized_fill_n(new_begin, count, args...);
+			std::uninitialized_fill_n(new_begin, count, std::forward<Args>(args)...);
 		}
 		else if constexpr (sizeof...(args) == 2)
 		{
@@ -1015,15 +979,12 @@ private:
 		}
 
 		mguard.release();
-
-		_begin = new_begin;
-		_end = new_begin + count;
-		_end_cap = new_begin + count;
+		replace_storage(new_begin, count, count);
 	}
 
 	void relocate_n(pointer first, size_type count, pointer dest)
 	{
-		if constexpr (std::is_nothrow_move_constructible_v<value_type> || !std::is_copy_constructible_v<value_type>)
+		if constexpr (std::is_nothrow_move_constructible_v<T> || !std::is_copy_constructible_v<T>)
 		{
 			std::uninitialized_move_n(first, count, dest);
 		}
@@ -1037,13 +998,13 @@ private:
 	{
 		if (new_cap == 0)
 		{
-			tidy();
 			return;
 		}
 
 		pointer new_begin = allocate(new_cap);
-		detail::memory_guard mguard(new_begin, new_cap * sizeof(T));
 		const size_type new_size = std::min(size(), new_cap);
+
+		detail::memory_guard<T> mguard(new_begin, new_cap);
 
 		relocate_n(_begin, new_size, new_begin);
 
@@ -1079,12 +1040,7 @@ private:
 template <typename T>
 [[nodiscard]] constexpr bool operator==(const vector<T>& lhs, const vector<T>& rhs)
 {
-	if (lhs.size() != rhs.size())
-	{
-		return false;
-	}
-
-	return std::equal(lhs.begin(), lhs.end(), rhs.begin());
+	return std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
 }
 
 template <typename T>
