@@ -41,25 +41,14 @@ public:
 		return _count;
 	}
 
-	void set_count(size_type count) noexcept
-	{
-		_count = count;
-	}
-
-	void advance(size_type count) noexcept
-	{
-		_count += count;
-	}
-
 	void release() noexcept
 	{
 		_ptr = nullptr;
-		_count = 0;
 	}
 
 private:
 	pointer _ptr;
-	size_type _count;
+	const size_type _count;
 };
 
 } // namespace raw::detail
