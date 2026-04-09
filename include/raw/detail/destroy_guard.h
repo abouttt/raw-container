@@ -14,7 +14,7 @@ public:
 	using size_type = std::size_t;
 	using pointer = T*;
 
-	explicit destroy_guard(pointer ptr, size_type count) noexcept
+	explicit destroy_guard(pointer ptr, size_type count = 0) noexcept
 		: _ptr(ptr)
 		, _count(count)
 	{
