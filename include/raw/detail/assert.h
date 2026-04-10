@@ -18,7 +18,7 @@ namespace raw::detail
 	std::abort();
 }
 
-}
+} // namespace raw::detail
 
 #ifndef NDEBUG
 #define RAW_ASSERT(expr, ...) \
