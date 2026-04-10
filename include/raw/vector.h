@@ -13,6 +13,7 @@
 #include <type_traits>
 #include <utility>
 
+#include "detail/assert.h"
 #include "detail/destroy_guard.h"
 #include "detail/memory_guard.h"
 
@@ -365,31 +366,37 @@ public:
 
 	[[nodiscard]] constexpr reference operator[](size_type pos)
 	{
+		RAW_ASSERT(pos < size(), "vector subscript out of range");
 		return _begin[pos];
 	}
 
 	[[nodiscard]] constexpr const_reference operator[](size_type pos) const
 	{
+		RAW_ASSERT(pos < size(), "vector subscript out of range");
 		return _begin[pos];
 	}
 
 	[[nodiscard]] constexpr reference front()
 	{
+		RAW_ASSERT(!empty(), "front() called on empty vector");
 		return *_begin;
 	}
 
 	[[nodiscard]] constexpr const_reference front() const
 	{
+		RAW_ASSERT(!empty(), "front() called on empty vector");
 		return *_begin;
 	}
 
 	[[nodiscard]] constexpr reference back()
 	{
+		RAW_ASSERT(!empty(), "back() called on empty vector");
 		return *(_end - 1);
 	}
 
 	[[nodiscard]] constexpr const_reference back() const
 	{
+		RAW_ASSERT(!empty(), "back() called on empty vector");
 		return *(_end - 1);
 	}
 
@@ -536,6 +543,8 @@ public:
 
 	iterator insert(const_iterator pos, size_type count, const T& value)
 	{
+		RAW_ASSERT(pos >= begin() && pos <= end(), "vector insert iterator outside range");
+
 		const difference_type offset = pos - begin();
 
 		if (count == 0)
@@ -605,6 +614,8 @@ public:
 	template <std::input_iterator InputIt>
 	iterator insert(const_iterator pos, InputIt first, InputIt last)
 	{
+		RAW_ASSERT(pos >= begin() && pos <= end(), "vector insert iterator outside range");
+
 		if constexpr (std::forward_iterator<InputIt>)
 		{
 			const difference_type offset = pos - begin();
@@ -689,6 +700,8 @@ public:
 	template <typename... Args>
 	iterator emplace(const_iterator pos, Args&&... args)
 	{
+		RAW_ASSERT(pos >= begin() && pos <= end(), "vector emplace iterator outside range");
+
 		const difference_type offset = pos - begin();
 
 		if (_end != _end_cap)
@@ -744,6 +757,8 @@ public:
 
 	iterator erase(const_iterator first, const_iterator last)
 	{
+		RAW_ASSERT(first >= begin() && first <= last && last <= end(), "vector erase iterator outside range");
+
 		const difference_type offset_first = first - cbegin();
 		const difference_type offset_last = last - cbegin();
 		pointer erase_first = _begin + offset_first;
@@ -802,6 +817,7 @@ public:
 
 	void pop_back()
 	{
+		RAW_ASSERT(!empty(), "pop_back() called on empty vector");
 		--_end;
 		std::destroy_at(_end);
 	}
