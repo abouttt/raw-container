@@ -172,7 +172,7 @@ public:
 	vector() noexcept
 		: _begin(nullptr)
 		, _end(nullptr)
-		, _end_cap(nullptr)
+		, _cap(nullptr)
 	{
 	}
 
@@ -219,7 +219,7 @@ public:
 	vector(vector&& other) noexcept
 		: _begin(std::exchange(other._begin, nullptr))
 		, _end(std::exchange(other._end, nullptr))
-		, _end_cap(std::exchange(other._end_cap, nullptr))
+		, _cap(std::exchange(other._cap, nullptr))
 	{
 	}
 
@@ -248,7 +248,7 @@ public:
 
 			_begin = std::exchange(other._begin, nullptr);
 			_end = std::exchange(other._end, nullptr);
-			_end_cap = std::exchange(other._end_cap, nullptr);
+			_cap = std::exchange(other._cap, nullptr);
 		}
 
 		return *this;
@@ -491,7 +491,7 @@ public:
 
 	[[nodiscard]] constexpr size_type capacity() const noexcept
 	{
-		return static_cast<size_type>(_end_cap - _begin);
+		return static_cast<size_type>(_cap - _begin);
 	}
 
 	void reserve(size_type new_cap)
@@ -509,7 +509,7 @@ public:
 
 	void shrink_to_fit()
 	{
-		if (_end != _end_cap)
+		if (_end != _cap)
 		{
 			if (_begin != _end)
 			{
@@ -704,7 +704,7 @@ public:
 
 		const difference_type offset = pos - begin();
 
-		if (_end != _end_cap)
+		if (_end != _cap)
 		{
 			pointer insert_pos = _begin + offset;
 
@@ -787,7 +787,7 @@ public:
 	template <typename... Args>
 	reference emplace_back(Args&&... args)
 	{
-		if (_end != _end_cap)
+		if (_end != _cap)
 		{
 			std::construct_at(_end, std::forward<Args>(args)...);
 			++_end;
@@ -905,7 +905,7 @@ public:
 			using std::swap;
 			swap(_begin, other._begin);
 			swap(_end, other._end);
-			swap(_end_cap, other._end_cap);
+			swap(_cap, other._cap);
 		}
 	}
 
@@ -1038,7 +1038,7 @@ private:
 
 		_begin = new_begin;
 		_end = new_begin + new_size;
-		_end_cap = new_begin + new_cap;
+		_cap = new_begin + new_cap;
 	}
 
 	void tidy()
@@ -1048,7 +1048,7 @@ private:
 
 	pointer _begin;
 	pointer _end;
-	pointer _end_cap;
+	pointer _cap;
 };
 
 // ---------- Non-member functions ---------- //
