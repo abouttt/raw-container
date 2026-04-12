@@ -289,7 +289,7 @@ public:
 			std::uninitialized_fill_n(new_begin, count, value);
 
 			mguard.release();
-			replace_storage(new_begin, count, new_cap);
+			change_array(new_begin, count, new_cap);
 		}
 	}
 
@@ -328,7 +328,7 @@ public:
 				std::uninitialized_copy(first, last, new_begin);
 
 				mguard.release();
-				replace_storage(new_begin, count, new_cap);
+				change_array(new_begin, count, new_cap);
 			}
 		}
 		else
@@ -605,7 +605,7 @@ public:
 			fill_dguard.release();
 			dguard.release();
 			mguard.release();
-			replace_storage(new_begin, old_size + count, new_cap);
+			change_array(new_begin, old_size + count, new_cap);
 		}
 
 		return begin() + offset;
@@ -680,7 +680,7 @@ public:
 				copy_dguard.release();
 				dguard.release();
 				mguard.release();
-				replace_storage(new_begin, old_size + count, new_cap);
+				change_array(new_begin, old_size + count, new_cap);
 			}
 
 			return begin() + offset;
@@ -744,7 +744,7 @@ public:
 			elem_dguard.release();
 			dguard.release();
 			mguard.release();
-			replace_storage(new_begin, old_size + 1, new_cap);
+			change_array(new_begin, old_size + 1, new_cap);
 		}
 
 		return begin() + offset;
@@ -809,7 +809,7 @@ public:
 
 			dguard.release();
 			mguard.release();
-			replace_storage(new_begin, old_size + 1, new_cap);
+			change_array(new_begin, old_size + 1, new_cap);
 		}
 
 		return back();
@@ -889,7 +889,7 @@ public:
 				fill_dguard.release();
 				dguard.release();
 				mguard.release();
-				replace_storage(new_begin, count, new_cap);
+				change_array(new_begin, count, new_cap);
 
 				return;
 			}
@@ -995,7 +995,7 @@ private:
 		}
 
 		mguard.release();
-		replace_storage(new_begin, count, count);
+		change_array(new_begin, count, count);
 	}
 
 	void relocate_n(pointer first, size_type count, pointer dest)
@@ -1025,10 +1025,10 @@ private:
 		relocate_n(_begin, new_size, new_begin);
 
 		mguard.release();
-		replace_storage(new_begin, new_size, new_cap);
+		change_array(new_begin, new_size, new_cap);
 	}
 
-	void replace_storage(pointer new_begin, size_type new_size, size_type new_cap)
+	void change_array(pointer new_begin, size_type new_size, size_type new_cap)
 	{
 		if (_begin)
 		{
@@ -1043,7 +1043,7 @@ private:
 
 	void tidy()
 	{
-		replace_storage(nullptr, 0, 0);
+		change_array(nullptr, 0, 0);
 	}
 
 	pointer _begin;
