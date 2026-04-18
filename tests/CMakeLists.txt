@@ -12,7 +12,7 @@ set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
 set(TEST_SOURCES
-    dummy.cpp
+    array_test.cpp
 )
 
 add_executable(raw_tests ${TEST_SOURCES})
