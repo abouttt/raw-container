@@ -1,28 +1,19 @@
-﻿#include <algorithm>
-#include <iostream>
-#include <iterator>
-#include <string>
+﻿#include <iostream>
 
-#include "raw/array.h"
+#include "raw/vector.h"
 
 int main()
 {
-	raw::array<int, 3> a1{ {1, 2, 3} };
-	raw::array<int, 3> a2 = { 1, 2, 3 };
+	raw::vector<int> v = { 8, 4, 5, 9 };
 
-	std::sort(a1.begin(), a1.end());
-	std::ranges::reverse_copy(a2, std::ostream_iterator<int>(std::cout, " "));
-	std::cout << '\n';
+	v.push_back(6);
+	v.push_back(9);
 
-	raw::array<std::string, 2> a3{ "E", "\u018E" };
-	for (const auto& s : a3)
+	v[2] = -1;
+
+	for (int n : v)
 	{
-		std::cout << s << ' ';
+		std::cout << n << ' ';
 	}
 	std::cout << '\n';
-
-	[[maybe_unused]] raw::array a4{ 3.0, 1.0, 4.0 };
-	[[maybe_unused]] raw::array<int, 2> a5;
-	[[maybe_unused]] raw::array<int, 2> a6{};
-	[[maybe_unused]] raw::array<int, 2> a7{ 1 };
 }
