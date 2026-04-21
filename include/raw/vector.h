@@ -761,19 +761,7 @@ public:
 
 	iterator erase(const_iterator pos)
 	{
-		RAW_ASSERT(pos >= begin() && pos < end(), "vector erase iterator outside range");
-
-		pointer erase_pos = _begin + (pos - begin());
-
-		if (erase_pos != _end - 1)
-		{
-			std::move(erase_pos + 1, _end, erase_pos);
-		}
-
-		std::destroy_at(_end - 1);
-		--_end;
-
-		return iterator(erase_pos);
+		return erase(pos, std::next(pos));
 	}
 
 	iterator erase(const_iterator first, const_iterator last)
