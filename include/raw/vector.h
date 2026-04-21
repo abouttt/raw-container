@@ -29,12 +29,12 @@ class vector_iterator
 public:
 	// ---------- Types ---------- //
 
-	using iterator_concept = std::contiguous_iterator_tag;
+	using iterator_concept	= std::contiguous_iterator_tag;
 	using iterator_category = std::random_access_iterator_tag;
-	using value_type = std::remove_cv_t<T>;
-	using difference_type = std::ptrdiff_t;
-	using pointer = T*;
-	using reference = T&;
+	using value_type		= std::remove_cv_t<T>;
+	using difference_type	= std::ptrdiff_t;
+	using pointer			= T*;
+	using reference			= T&;
 
 	// ---------- Constructors ---------- //
 
@@ -168,17 +168,17 @@ public:
 
 	// ---------- Types ---------- //
 
-	using value_type = T;
-	using size_type = std::size_t;
+	using value_type	  = T;
+	using size_type		  = std::size_t;
 	using difference_type = std::ptrdiff_t;
-	using reference = T&;
+	using reference		  = T&;
 	using const_reference = const T&;
-	using pointer = T*;
-	using const_pointer = const T*;
+	using pointer		  = T*;
+	using const_pointer	  = const T*;
 
-	using iterator = detail::vector_iterator<T>;
-	using const_iterator = detail::vector_iterator<const T>;
-	using reverse_iterator = std::reverse_iterator<iterator>;
+	using iterator				 = detail::vector_iterator<T>;
+	using const_iterator		 = detail::vector_iterator<const T>;
+	using reverse_iterator		 = std::reverse_iterator<iterator>;
 	using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
 	// ---------- Constructors / Destructor ---------- //
