@@ -14,6 +14,7 @@ FetchContent_MakeAvailable(googletest)
 set(TEST_SOURCES
     array_test.cpp
     vector_test.cpp
+    list_test.cpp
 )
 
 add_executable(raw_tests ${TEST_SOURCES})
