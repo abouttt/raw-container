@@ -27,16 +27,12 @@ template <typename T>
 class vector_iterator
 {
 public:
-	// ---------- Types ---------- //
-
 	using iterator_concept	= std::contiguous_iterator_tag;
 	using iterator_category = std::random_access_iterator_tag;
 	using value_type		= std::remove_cv_t<T>;
 	using difference_type	= std::ptrdiff_t;
 	using pointer			= T*;
 	using reference			= T&;
-
-	// ---------- Constructors ---------- //
 
 	constexpr vector_iterator() noexcept
 		: _ptr(nullptr)
@@ -55,8 +51,6 @@ public:
 	{
 	}
 
-	// ---------- Access ---------- //
-
 	[[nodiscard]] constexpr reference operator*() const noexcept
 	{
 		return *_ptr;
@@ -66,13 +60,6 @@ public:
 	{
 		return _ptr;
 	}
-
-	[[nodiscard]] constexpr reference operator[](difference_type n) const noexcept
-	{
-		return *(_ptr + n);
-	}
-
-	// ---------- Increment / Decrement ---------- //
 
 	constexpr vector_iterator& operator++() noexcept
 	{
@@ -100,17 +87,9 @@ public:
 		return tmp;
 	}
 
-	// ---------- Arithmetic ---------- //
-
 	constexpr vector_iterator& operator+=(difference_type n) noexcept
 	{
 		_ptr += n;
-		return *this;
-	}
-
-	constexpr vector_iterator& operator-=(difference_type n) noexcept
-	{
-		_ptr -= n;
 		return *this;
 	}
 
@@ -119,17 +98,21 @@ public:
 		return vector_iterator(_ptr + n);
 	}
 
-	[[nodiscard]] constexpr vector_iterator operator-(difference_type n) const noexcept
-	{
-		return vector_iterator(_ptr - n);
-	}
-
 	[[nodiscard]] friend constexpr vector_iterator operator+(difference_type n, const vector_iterator& it) noexcept
 	{
 		return vector_iterator(it._ptr + n);
 	}
 
-	// ---------- Difference ---------- //
+	constexpr vector_iterator& operator-=(difference_type n) noexcept
+	{
+		_ptr -= n;
+		return *this;
+	}
+
+	[[nodiscard]] constexpr vector_iterator operator-(difference_type n) const noexcept
+	{
+		return vector_iterator(_ptr - n);
+	}
 
 	template <typename U>
 	[[nodiscard]] constexpr difference_type operator-(const vector_iterator<U>& other) const noexcept
@@ -137,7 +120,10 @@ public:
 		return _ptr - other._ptr;
 	}
 
-	// ---------- Comparison ---------- //
+	[[nodiscard]] constexpr reference operator[](difference_type n) const noexcept
+	{
+		return *(_ptr + n);
+	}
 
 	template <typename U>
 	[[nodiscard]] constexpr bool operator==(const vector_iterator<U>& other) const noexcept
