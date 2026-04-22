@@ -747,6 +747,7 @@ public:
 
 	iterator erase(const_iterator pos)
 	{
+		RAW_ASSERT(pos >= begin() && pos < end(), "vector erase iterator outside range");
 		return erase(pos, std::next(pos));
 	}
 
@@ -754,8 +755,8 @@ public:
 	{
 		RAW_ASSERT(first >= begin() && first <= last && last <= end(), "vector erase iterator outside range");
 
-		const difference_type offset_first = first - cbegin();
-		const difference_type offset_last = last - cbegin();
+		const difference_type offset_first = first - begin();
+		const difference_type offset_last = last - begin();
 		pointer erase_first = _begin + offset_first;
 		pointer erase_last = _begin + offset_last;
 
@@ -796,13 +797,11 @@ public:
 			pointer insert_pos = new_begin + old_size;
 
 			std::construct_at(insert_pos, std::forward<Args>(args)...);
-			detail::destroy_guard<T> dguard1(insert_pos, insert_pos + 1);
+			detail::destroy_guard<T> dguard(insert_pos, insert_pos + 1);
 
 			relocate_n(_begin, old_size, new_begin);
-			detail::destroy_guard<T> dguard2(new_begin, new_begin + old_size);
 
-			dguard2.release();
-			dguard1.release();
+			dguard.release();
 			mguard.release();
 			change_array(new_begin, old_size + 1, new_cap);
 		}
