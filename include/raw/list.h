@@ -54,15 +54,11 @@ private:
 	using node		= list_node<T>;
 
 public:
-	// ---------- Types ---------- //
-
 	using iterator_category = std::bidirectional_iterator_tag;
 	using value_type		= std::remove_cv_t<T>;
 	using difference_type	= std::ptrdiff_t;
 	using pointer			= T*;
 	using reference			= T&;
-
-	// ---------- Constructors ---------- //
 
 	list_iterator() noexcept
 		: _ptr(nullptr)
@@ -81,8 +77,6 @@ public:
 	{
 	}
 
-	// ---------- Access ---------- //
-
 	[[nodiscard]] reference operator*() const noexcept
 	{
 		return static_cast<node*>(_ptr)->value;
@@ -92,8 +86,6 @@ public:
 	{
 		return &static_cast<node*>(_ptr)->value;
 	}
-
-	// ---------- Increment / Decrement ---------- //
 
 	list_iterator& operator++() noexcept
 	{
@@ -120,8 +112,6 @@ public:
 		--*this;
 		return tmp;
 	}
-
-	// ---------- Comparison ---------- //
 
 	template <typename U>
 	[[nodiscard]] bool operator==(const list_iterator<U>& other) const noexcept
