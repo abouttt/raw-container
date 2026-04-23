@@ -214,8 +214,7 @@ public:
 	{
 		if (this != std::addressof(other))
 		{
-			list tmp(other);
-			swap(tmp);
+			assign(other.begin(), other.end());
 		}
 
 		return *this;
@@ -662,23 +661,28 @@ public:
 	template <typename UnaryPred>
 	size_type remove_if(UnaryPred p)
 	{
-		node* cur = static_cast<node*>(_sentinel.next);
+		node_base* prev = &_sentinel;
+		node_base* curr = _sentinel.next;
 		size_type removed = 0;
 
-		while (cur != &_sentinel)
+		while (curr != &_sentinel)
 		{
-			node* next_node = static_cast<node*>(cur->next);
-
-			if (p(cur->value))
+			if (p(static_cast<node*>(curr)->value))
 			{
-				unhook_node(cur);
-				destroy_node(cur);
-				--_size;
+				node_base* next = curr->next;
+				unhook_node(curr);
+				destroy_node(static_cast<node*>(curr));
+				curr = next;
 				++removed;
 			}
-
-			cur = next_node;
+			else
+			{
+				prev = curr;
+				curr = curr->next;
+			}
 		}
+
+		_size -= removed;
 
 		return removed;
 	}
@@ -690,15 +694,15 @@ public:
 			return;
 		}
 
-		node_base* cur = _sentinel.next;
-		node_base* next_node = nullptr;
+		node_base* curr = _sentinel.next;
+		node_base* next = nullptr;
 
-		while (cur != &_sentinel)
+		while (curr != &_sentinel)
 		{
-			next_node = cur->next;
-			cur->next = cur->prev;
-			cur->prev = next_node;
-			cur = next_node;
+			next = curr->next;
+			curr->next = curr->prev;
+			curr->prev = next;
+			curr = next;
 		}
 
 		using std::swap;
@@ -718,24 +722,28 @@ public:
 			return 0;
 		}
 
-		node* cur = static_cast<node*>(_sentinel.next->next);
+		node_base* prev = _sentinel.next;
+		node_base* curr = prev->next;
 		size_type removed = 0;
 
-		while (cur != &_sentinel)
+		while (curr != &_sentinel)
 		{
-			node* next_node = static_cast<node*>(cur->next);
-			node* prev_node = static_cast<node*>(cur->prev);
-
-			if (p(prev_node->value, cur->value))
+			if (p(static_cast<node*>(prev)->value, static_cast<node*>(curr)->value))
 			{
-				unhook_node(cur);
-				destroy_node(cur);
-				--_size;
+				node_base* next = curr->next;
+				unhook_node(curr);
+				destroy_node(static_cast<node*>(curr));
+				curr = next;
 				++removed;
 			}
-
-			cur = next_node;
+			else
+			{
+				prev = curr;
+				curr = curr->next;
+			}
 		}
+
+		_size -= removed;
 
 		return removed;
 	}
@@ -868,14 +876,13 @@ private:
 
 	size_type destroy_node_chain(node* head)
 	{
-		node* cur = head;
 		size_type destroyed = 0;
 
-		while (cur && cur != &_sentinel)
+		while (head && head != &_sentinel)
 		{
-			node* next = static_cast<node*>(cur->next);
-			destroy_node(cur);
-			cur = next;
+			node* next = static_cast<node*>(head->next);
+			destroy_node(head);
+			head = next;
 			++destroyed;
 		}
 
