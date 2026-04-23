@@ -266,7 +266,7 @@ public:
 	[[nodiscard]] const_reference front() const
 	{
 		RAW_ASSERT(!empty(), "front() called on empty list");
-		return static_cast<node*>(_sentinel.next)->value;
+		return static_cast<const node*>(_sentinel.next)->value;
 	}
 
 	[[nodiscard]] reference back()
@@ -278,7 +278,7 @@ public:
 	[[nodiscard]] const_reference back() const
 	{
 		RAW_ASSERT(!empty(), "back() called on empty list");
-		return static_cast<node*>(_sentinel.prev)->value;
+		return static_cast<const node*>(_sentinel.prev)->value;
 	}
 
 	// ---------- Iterators ---------- //
@@ -557,7 +557,7 @@ public:
 
 	void merge(list&& other)
 	{
-		merge(other, std::less<>{});
+		merge(other);
 	}
 
 	template <typename Compare>
@@ -798,7 +798,7 @@ public:
 
 private:
 	template <typename... Args>
-	[[nodiscard]] node* create_node(Args&&... args)
+	[[nodiscard]] node* create_node(Args&&... args) const
 	{
 		node* ptr = detail::allocate<node>(1);
 		detail::memory_guard<node> guard(ptr, 1);
@@ -808,7 +808,7 @@ private:
 	}
 
 	template <std::input_iterator InputIt>
-	std::tuple<node*, node*, size_type> create_node_chain(InputIt first, InputIt last)
+	std::tuple<node*, node*, size_type> create_node_chain(InputIt first, InputIt last) const
 	{
 		if (first == last)
 		{
@@ -838,7 +838,7 @@ private:
 		return { head, tail, created };
 	}
 
-	std::tuple<node*, node*, size_type> create_node_chain_n(size_type count, const T& value)
+	std::tuple<node*, node*, size_type> create_node_chain_n(size_type count, const T& value) const
 	{
 		if (count == 0)
 		{
@@ -868,13 +868,13 @@ private:
 		return { head, tail, created };
 	}
 
-	void destroy_node(node* node_to_destroy)
+	void destroy_node(node* node_to_destroy) const
 	{
 		std::destroy_at(node_to_destroy);
 		detail::deallocate(node_to_destroy, 1);
 	}
 
-	size_type destroy_node_chain(node* head)
+	size_type destroy_node_chain(node* head) const
 	{
 		size_type destroyed = 0;
 
@@ -889,7 +889,7 @@ private:
 		return destroyed;
 	}
 
-	void hook_node(node_base* pos, node_base* node_to_hook)
+	void hook_node(node_base* pos, node_base* node_to_hook) const
 	{
 		node_to_hook->next = pos;
 		node_to_hook->prev = pos->prev;
@@ -897,7 +897,7 @@ private:
 		pos->prev = node_to_hook;
 	}
 
-	void hook_node_chain(node_base* pos, node_base* head, node_base* tail)
+	void hook_node_chain(node_base* pos, node_base* head, node_base* tail) const
 	{
 		head->prev = pos->prev;
 		tail->next = pos;
@@ -905,13 +905,13 @@ private:
 		pos->prev = tail;
 	}
 
-	void unhook_node(node_base* node_to_unhook)
+	void unhook_node(node_base* node_to_unhook) const
 	{
 		node_to_unhook->prev->next = node_to_unhook->next;
 		node_to_unhook->next->prev = node_to_unhook->prev;
 	}
 
-	void unhook_node_chain(node_base* head, node_base* tail)
+	void unhook_node_chain(node_base* head, node_base* tail) const
 	{
 		head->prev->next = tail->next;
 		tail->next->prev = head->prev;
