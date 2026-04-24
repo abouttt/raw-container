@@ -153,7 +153,7 @@ public:
 	using reference		  = T&;
 	using const_reference = const T&;
 	using pointer		  = T*;
-	using const_pointer	  = const T*;
+	using const_pointer   = const T*;
 
 	using iterator				 = detail::list_iterator<T>;
 	using const_iterator		 = detail::list_iterator<const T>;
@@ -422,7 +422,11 @@ public:
 
 	iterator erase(const_iterator pos)
 	{
-		return erase(pos, std::next(pos));
+		node_base* next = pos._ptr->next;
+		node_base* unhooked = unhook_node(pos._ptr);
+		destroy_node(static_cast<node*>(unhooked));
+		--_size;
+		return iterator(next);
 	}
 
 	iterator erase(const_iterator first, const_iterator last)
@@ -432,13 +436,11 @@ public:
 			return iterator(last._ptr);
 		}
 
-		node_base* head = first._ptr;
-		node_base* tail = last._ptr->prev;
-
-		unhook_node_chain(head, tail);
+		node_base* next = last._ptr;
+		auto [head, tail] = unhook_node_chain(first._ptr, last._ptr->prev);
 		_size -= destroy_node_chain(static_cast<node*>(head));
 
-		return iterator(last._ptr);
+		return iterator(next);
 	}
 
 	void push_back(const T& value)
@@ -454,8 +456,7 @@ public:
 	template <typename... Args>
 	reference emplace_back(Args&&... args)
 	{
-		iterator it = emplace(end(), std::forward<Args>(args)...);
-		return *it;
+		return *emplace(end(), std::forward<Args>(args)...);
 	}
 
 	void pop_back()
@@ -477,8 +478,7 @@ public:
 	template <typename... Args>
 	reference emplace_front(Args&&... args)
 	{
-		iterator it = emplace(begin(), std::forward<Args>(args)...);
-		return *it;
+		return *emplace(begin(), std::forward<Args>(args)...);
 	}
 
 	void pop_front()
@@ -576,7 +576,10 @@ public:
 			if (comp(*it2, *it1))
 			{
 				iterator next2 = std::next(it2);
-				splice(it1, other, it2);
+				node_base* unhooked = other.unhook_node(it2._ptr);
+				--other._size;
+				hook_node(it1._ptr, unhooked);
+				++_size;
 				it2 = next2;
 			}
 			else
@@ -619,7 +622,15 @@ public:
 			return;
 		}
 
-		splice(pos, other, it, std::next(it));
+		node_base* unhooked = other.unhook_node(it._ptr);
+
+		if (this != std::addressof(other))
+		{
+			--other._size;
+			++_size;
+		}
+
+		hook_node(pos._ptr, unhooked);
 	}
 
 	void splice(const_iterator pos, list&& other, const_iterator it)
@@ -634,9 +645,6 @@ public:
 			return;
 		}
 
-		node_base* head = first._ptr;
-		node_base* tail = last._ptr->prev;
-
 		if (this != std::addressof(other))
 		{
 			size_type count = std::distance(first, last);
@@ -644,7 +652,7 @@ public:
 			_size += count;
 		}
 
-		other.unhook_node_chain(head, tail);
+		auto [head, tail] = other.unhook_node_chain(first._ptr, last._ptr->prev);
 		hook_node_chain(pos._ptr, head, tail);
 	}
 
@@ -770,7 +778,6 @@ public:
 			carry.splice(carry.begin(), *this, begin());
 
 			size_type i = 0;
-
 			while (i < fill && !counter[i].empty())
 			{
 				counter[i].merge(carry, comp);
@@ -905,18 +912,22 @@ private:
 		pos->prev = tail;
 	}
 
-	void unhook_node(node_base* node_to_unhook) const
+	node_base* unhook_node(node_base* node_to_unhook) const
 	{
 		node_to_unhook->prev->next = node_to_unhook->next;
 		node_to_unhook->next->prev = node_to_unhook->prev;
+		node_to_unhook->next = nullptr;
+		node_to_unhook->prev = nullptr;
+		return node_to_unhook;
 	}
 
-	void unhook_node_chain(node_base* head, node_base* tail) const
+	std::pair<node_base*, node_base*> unhook_node_chain(node_base* head, node_base* tail) const
 	{
 		head->prev->next = tail->next;
 		tail->next->prev = head->prev;
 		head->prev = nullptr;
 		tail->next = nullptr;
+		return { head, tail };
 	}
 
 	template <std::input_iterator InputIt>
