@@ -1,0 +1,168 @@
+﻿{
+    "version": 3,
+    "configurePresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "installDir": "${sourceDir}/out/install/${presetName}"
+        },
+        {
+            "name": "win-x64-debug",
+            "inherits": "base",
+            "displayName": "Windows x64 Debug",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            },
+            "architecture": {
+                "value": "x64",
+                "strategy": "external"
+            },
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "win-x64-release",
+            "inherits": "base",
+            "displayName": "Windows x64 Release",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            },
+            "architecture": {
+                "value": "x64",
+                "strategy": "external"
+            },
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "linux-x64-debug",
+            "inherits": "base",
+            "displayName": "Linux x64 Debug",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Linux"
+            },
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "linux-x64-release",
+            "inherits": "base",
+            "displayName": "Linux x64 Release",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Linux"
+            },
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "macos-x64-debug",
+            "inherits": "base",
+            "displayName": "macOS x64 Debug",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Darwin"
+            },
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "macos-x64-release",
+            "inherits": "base",
+            "displayName": "macOS x64 Release",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Darwin"
+            },
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        }
+    ],
+    "buildPresets": [
+      {
+        "name": "win-x64-debug",
+        "configurePreset": "win-x64-debug"
+      },
+      {
+        "name": "win-x64-release",
+        "configurePreset": "win-x64-release"
+      },
+      {
+        "name": "linux-x64-debug",
+        "configurePreset": "linux-x64-debug"
+      },
+      {
+        "name": "linux-x64-release",
+        "configurePreset": "linux-x64-release"
+      },
+      {
+        "name": "macos-x64-debug",
+        "configurePreset": "macos-x64-debug"
+      },
+      {
+        "name": "macos-x64-release",
+        "configurePreset": "macos-x64-release"
+      }
+    ],
+    "testPresets": [
+        {
+            "name": "win-x64-debug",
+            "configurePreset": "win-x64-debug",
+            "output": {
+              "outputOnFailure": true
+            }
+        },
+        {
+            "name": "win-x64-release",
+            "configurePreset": "win-x64-release",
+            "output": {
+              "outputOnFailure": true
+            }
+        },
+        {
+            "name": "linux-x64-debug",
+            "configurePreset": "linux-x64-debug",
+            "output": {
+              "outputOnFailure": true
+            }
+        },
+        {
+            "name": "linux-x64-release",
+            "configurePreset": "linux-x64-release",
+            "output": {
+              "outputOnFailure": true
+            }
+        },
+        {
+            "name": "macos-x64-debug",
+            "configurePreset": "macos-x64-debug",
+            "output": {
+              "outputOnFailure": true
+            }
+        },
+        {
+            "name": "macos-x64-release",
+            "configurePreset": "macos-x64-release",
+            "output": {
+              "outputOnFailure": true
+            }
+        }
+    ]
+}
