@@ -346,10 +346,7 @@ TEST(VectorTest, NonMemberErase)
 	EXPECT_TRUE(equal(v, { 1, 3, 4 }));
 
 	v = { 1, 2, 3, 4, 5, 6 };
-	cnt = erase_if(v, [](int x)
-		{
-			return x % 2 == 0;
-		});
+	cnt = erase_if(v, [](int x) {return x % 2 == 0; });
 	EXPECT_EQ(cnt, 3);
 	EXPECT_TRUE(equal(v, { 1, 3, 5 }));
 }
