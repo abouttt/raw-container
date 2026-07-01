@@ -16,7 +16,7 @@ bool equal(const raw::array<T, N>& arr, std::initializer_list<T> ilist)
 		return false;
 	}
 
-	return std::equal(arr.begin(), arr.end(), ilist.begin(), ilist.end());
+	return std::equal(arr.begin(), arr.end(), ilist.begin());
 }
 
 TEST(ArrayTest, Constructors)
