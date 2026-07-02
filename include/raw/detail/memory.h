@@ -57,24 +57,6 @@ void deallocate(T* ptr, std::size_t count) noexcept
 	}
 }
 
-struct memory_deleter
-{
-	template <typename T>
-	void operator()(T* ptr, std::size_t count) const noexcept
-	{
-		deallocate(ptr, count);
-	}
-};
-
-struct object_deleter
-{
-	template <typename T>
-	void operator()(T* ptr, std::size_t count) const noexcept
-	{
-		std::destroy_n(ptr, count);
-	}
-};
-
 template <typename T, typename Deleter>
 class guard
 {
@@ -120,8 +102,66 @@ private:
 	std::size_t m_count;
 };
 
+template <typename Node>
+class node_guard
+{
+public:
+	explicit node_guard(Node* head) noexcept
+		: m_head(head)
+	{
+	}
+
+	~node_guard() noexcept
+	{
+		while (m_head)
+		{
+			Node* next = static_cast<Node*>(m_head->next);
+			std::destroy_at(m_head);
+			deallocate<Node>(m_head, 1);
+			m_head = next;
+		}
+	}
+
+	node_guard(const node_guard&) = delete;
+	node_guard(node_guard&&) = delete;
+
+	node_guard& operator=(const node_guard&) = delete;
+	node_guard& operator=(node_guard&&) = delete;
+
+	[[nodiscard]] Node* get() const noexcept
+	{
+		return m_head;
+	}
+
+	void release() noexcept
+	{
+		m_head = nullptr;
+	}
+
+private:
+	Node* m_head;
+};
+
+struct memory_deleter
+{
+	template <typename T>
+	void operator()(T* ptr, std::size_t count) const noexcept
+	{
+		deallocate(ptr, count);
+	}
+};
+
 template <typename T>
 using memory_guard = guard<T, memory_deleter>;
+
+struct object_deleter
+{
+	template <typename T>
+	void operator()(T* ptr, std::size_t count) const noexcept
+	{
+		std::destroy_n(ptr, count);
+	}
+};
 
 template <typename T>
 using object_guard = guard<T, object_deleter>;
