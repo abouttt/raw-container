@@ -1,19 +1,25 @@
+#include <algorithm>
 #include <iostream>
 
-#include "raw/vector.h"
+#include "raw/list.h"
 
 int main()
 {
-	raw::vector<int> v = { 8, 4, 5, 9 };
+	raw::list<int> l = { 7, 5, 16, 8 };
 
-	v.push_back(6);
-	v.push_back(9);
+	l.push_front(25);
+	l.push_back(13);
 
-	v[2] = -1;
-
-	for (int n : v)
+	auto it = std::find(l.begin(), l.end(), 16);
+	if (it != l.end())
 	{
-		std::cout << n << ' ';
+		l.insert(it, 42);
 	}
-	std::cout << '\n';
+
+	std::cout << "l = { ";
+	for (int n : l)
+	{
+		std::cout << n << ", ";
+	}
+	std::cout << "};\n";
 }
