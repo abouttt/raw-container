@@ -1,23 +1,23 @@
 #include <algorithm>
 #include <iostream>
 
-#include "raw/list.h"
+#include "raw/forward_list.h"
 
 int main()
 {
-	raw::list<int> l = { 7, 5, 16, 8 };
+	raw::forward_list<int> fl = { 7, 5, 16, 8 };
 
-	l.push_front(25);
-	l.push_back(13);
+	fl.push_front(25);
+	fl.push_front(13);
 
-	auto it = std::find(l.begin(), l.end(), 16);
-	if (it != l.end())
+	auto it = std::find(fl.begin(), fl.end(), 16);
+	if (it != fl.end())
 	{
-		l.insert(it, 42);
+		fl.insert_after(it, 42);
 	}
 
-	std::cout << "l = { ";
-	for (int n : l)
+	std::cout << "fl = { ";
+	for (int n : fl)
 	{
 		std::cout << n << ", ";
 	}
